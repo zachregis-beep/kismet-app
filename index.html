@@ -20,10 +20,11 @@
   @keyframes floatHeart { 0% { transform: translateY(100vh) translateX(0) rotate(0deg);} 100% { transform: translateY(-20vh) translateX(50vw) rotate(360deg);} }
 
   .container {
-    max-width: 650px; margin:50px auto; padding:30px;
+    max-width: 700px; margin:50px auto; padding:30px;
     background: rgba(255,255,255,0.95); border-radius:20px;
     box-shadow:0 10px 30px rgba(0,0,0,0.1);
   }
+
   h1 { text-align:center; color:#ff2e63; margin-bottom:20px;}
   label { display:block; margin-top:15px; font-weight:600; color:#333;}
   select { width:100%; padding:10px; border-radius:10px; margin-top:5px; font-size:16px;}
@@ -31,6 +32,11 @@
     background: linear-gradient(90deg,#ff2e63,#ff6f91);
     color:white; border:none; border-radius:15px; font-size:18px; font-weight:600; cursor:pointer; transition:0.3s;}
   button:hover { transform:translateY(-3px); box-shadow:0 10px 20px rgba(255,46,99,0.3);}
+
+  #chartContainer { margin-top:30px; }
+  #personalityBreakdown { margin-top:20px; font-size:16px; line-height:1.4; color:#333; }
+  #averageScore { margin-top:15px; font-weight:600; color:#ff2e63; text-align:center; }
+  #animalScores { margin-top:10px; font-weight:600; color:#333; }
 </style>
 </head>
 <body>
@@ -50,14 +56,21 @@ for(let i=0;i<30;i++){
 
 <div class="container">
   <h1>KISMET Personality Survey</h1>
-  <form id="surveyForm" target="_blank" action="results.html">
+  <form id="surveyForm">
     <div id="questions"></div>
     <button type="submit">Submit Survey</button>
   </form>
+
+  <div id="averageScore"></div>
+  <div id="chartContainer">
+    <canvas id="radarChart"></canvas>
+  </div>
+  <div id="personalityBreakdown"></div>
+  <div id="animalScores"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// 15 questions covering the 5 traits
 const questions = [
   {text:"I enjoy meeting new people", trait:"extraversion"},
   {text:"I prefer quiet nights at home", trait:"extraversion", reverse:true},
@@ -73,27 +86,51 @@ const questions = [
   {text:"I like social gatherings", trait:"extraversion"},
   {text:"I follow through on tasks", trait:"conscientiousness"},
   {text:"I value harmony in relationships", trait:"agreeableness"},
-  {text:"I handle conflict well", trait:"stability"}
+  {text:"I handle conflict well", trait:"stability"},
+  {text:"Select your star sign", trait:"starSign", options:["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"]}
 ];
 
 const questionsDiv = document.getElementById("questions");
+
+// Generate questions
 questions.forEach((q,i)=>{
   const label = document.createElement('label');
   label.textContent=`${i+1}. ${q.text}`;
-  const select = document.createElement('select');
-  select.name='q'+i; // submit value
-  for(let j=1;j<=5;j++){
-    const option = document.createElement('option');
-    option.value=j;
-    option.textContent=`${j} - ${["Strongly Disagree","Disagree","Neutral","Agree","Strongly Agree"][j-1]}`;
-    select.appendChild(option);
+  let input;
+  if(q.trait==="starSign"){
+    input = document.createElement('select');
+    input.name='q'+i;
+    q.options.forEach(opt=>{
+      const option = document.createElement('option');
+      option.value=opt;
+      option.textContent=opt;
+      input.appendChild(option);
+    });
+  } else {
+    input = document.createElement('select');
+    input.name='q'+i;
+    for(let j=1;j<=5;j++){
+      const option = document.createElement('option');
+      option.value=j;
+      option.textContent=`${j} - ${["Strongly Disagree","Disagree","Neutral","Agree","Strongly Agree"][j-1]}`;
+      input.appendChild(option);
+    }
   }
   questionsDiv.appendChild(label);
-  questionsDiv.appendChild(select);
+  questionsDiv.appendChild(input);
 });
 
-// On submit, calculate results and pass via URL
-const form=document.getElementById("surveyForm");
+const form = document.getElementById("surveyForm");
+const ctx = document.getElementById('radarChart').getContext('2d');
+const breakdown = document.getElementById("personalityBreakdown");
+const averageDiv = document.getElementById("averageScore");
+const animalDiv = document.getElementById("animalScores");
+let radarChart;
+
+const animalMap = {
+  1:"Sloth", 2:"Cat", 3:"Dog", 4:"Dolphin", 5:"Eagle"
+};
+
 form.addEventListener("submit",(e)=>{
   e.preventDefault();
   const formData = new FormData(form);
@@ -102,7 +139,9 @@ form.addEventListener("submit",(e)=>{
   let total=0;
 
   questions.forEach((q,i)=>{
-    let val=parseInt(formData.get('q'+i));
+    let val=formData.get('q'+i);
+    if(q.trait==="starSign") return;
+    val=parseInt(val);
     if(q.reverse) val=6-val;
     scores[q.trait]+=val;
     counts[q.trait]++;
@@ -110,49 +149,32 @@ form.addEventListener("submit",(e)=>{
   });
 
   for(const t in scores) scores[t]=(scores[t]/counts[t]).toFixed(2);
-  const overallAvg=(total/questions.length).toFixed(2);
+  const overallAvg=(total/(questions.length-1)).toFixed(2); // exclude starSign
 
-  // Generate personality breakdown
-  const breakdown=[];
-  breakdown.push(scores.extraversion>=3.5?"Outgoing and social":"More of a homebody");
-  breakdown.push(scores.openness>=3.5?"Adventurous and curious":"Prefer routine and familiar");
-  breakdown.push(scores.conscientiousness>=3.5?"Organized and reliable":"Flexible and go-with-the-flow");
-  breakdown.push(scores.agreeableness>=3.5?"Empathetic and cooperative":"Independent and assertive");
-  breakdown.push(scores.stability>=3.5?"Calm under stress":"Sensitive to stress");
+  averageDiv.textContent=`Your average score: ${overallAvg} / 5`;
 
-  // Open results in new tab
-  const newWin=window.open();
-  newWin.document.write(`<html><head><title>Your KISMET Results</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-  body{font-family:Montserrat,sans-serif;padding:30px;background:#ffccd5;}
-  h1{text-align:center;color:#ff2e63;}
-  #chartContainer{max-width:500px;margin:auto;}
-  ul{font-size:16px;line-height:1.4;}
-  </style>
-  </head><body>
-  <h1>Your KISMET Results</h1>
-  <p><strong>Average Score:</strong> ${overallAvg} / 5</p>
-  <div id="chartContainer"><canvas id="radarChart"></canvas></div>
-  <h3>Personality Breakdown:</h3><ul>${breakdown.map(l=>`<li>${l}</li>`).join('')}</ul>
-  <script>
-  const ctx=document.getElementById("radarChart").getContext("2d");
-  new Chart(ctx,{
-    type:"radar",
-    data:{
-      labels:["Openness","Conscientiousness","Extraversion","Agreeableness","Stability"],
-      datasets:[{
-        label:"Your Personality",
-        data:[${scores.openness},${scores.conscientiousness},${scores.extraversion},${scores.agreeableness},${scores.stability}],
-        backgroundColor:"rgba(255,46,99,0.2)",
-        borderColor:"#ff2e63",
-        borderWidth:2
-      }]
-    },
-    options:{scales:{r:{min:1,max:5}}}
-  });
-  </script>
-  </body></html>`);
+  // Radar chart
+  const data = {
+    labels:['Openness','Conscientiousness','Extraversion','Agreeableness','Stability'],
+    datasets:[{label:'Your Personality',data:Object.values(scores),backgroundColor:'rgba(255,46,99,0.2)',borderColor:'#ff2e63',borderWidth:2}]
+  };
+  if(radarChart) radarChart.destroy();
+  radarChart = new Chart(ctx,{type:'radar',data:data,options:{scales:{r:{min:1,max:5}}}});
+
+  // Personality breakdown
+  const lines=[];
+  lines.push(scores.extraversion>=3.5?"Outgoing and social":"More of a homebody");
+  lines.push(scores.openness>=3.5?"Adventurous and curious":"Prefer routine and familiar");
+  lines.push(scores.conscientiousness>=3.5?"Organized and reliable":"Flexible and go-with-the-flow");
+  lines.push(scores.agreeableness>=3.5?"Empathetic and cooperative":"Independent and assertive");
+  lines.push(scores.stability>=3.5?"Calm under stress":"Sensitive to stress");
+
+  breakdown.innerHTML="<h3>Personality Breakdown:</h3><ul>"+lines.map(l=>`<li>${l}</li>`).join('')+"</ul>";
+
+  // Animal assignments
+  const animals=[];
+  for(const t in scores) animals.push(`${t.charAt(0).toUpperCase()+t.slice(1)}: ${animalMap[Math.round(scores[t])]}`);
+  animalDiv.innerHTML="<h3>Your Animal Scores:</h3><ul>"+animals.map(a=>`<li>${a}</li>`).join('')+"</ul>";
 });
 </script>
 </body>
