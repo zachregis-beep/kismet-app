@@ -1,201 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>KISMET | Personality Match</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KISMET - Personality Survey</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body {
+    font-family: 'Montserrat', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #ff4d6d, #ffccd5);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '❤️ ❤️ ❤️ ❤️ ❤️ ❤️ ❤️ ❤️ ❤️ ❤️';
+    position: absolute;
+    font-size: 50px;
+    opacity: 0.1;
+    top: 50%;
+    left: -20%;
+    transform: rotate(-25deg);
+    white-space: nowrap;
+    animation: floatHearts 20s linear infinite;
+  }
+  @keyframes floatHearts { 0% { transform: translateX(0) rotate(-25deg); } 100% { transform: translateX(150vw) rotate(-25deg); } }
+  @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      max-width: 900px;
-      margin: auto;
-      padding: 40px 20px;
-      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-      color: #222;
-    }
-
-    h1 {
-      text-align: center;
-      font-size: 42px;
-      letter-spacing: 3px;
-      margin-bottom: 10px;
-    }
-
-    .subtitle {
-      text-align: center;
-      margin-bottom: 40px;
-      color: #666;
-    }
-
-    .card {
-      background: white;
-      padding: 25px;
-      margin-bottom: 25px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-    }
-
-    .question {
-      margin-bottom: 18px;
-    }
-
-    select, input {
-      width: 100%;
-      padding: 8px;
-      margin-top: 6px;
-      border-radius: 6px;
-      border: 1px solid #ddd;
-    }
-
-    button {
-      padding: 14px;
-      width: 100%;
-      border-radius: 8px;
-      border: none;
-      background: #111;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-
-    canvas {
-      margin-top: 40px;
-    }
-  </style>
+  .container { max-width: 600px; margin: 50px auto; padding: 30px; background: rgba(255,255,255,0.95); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+  h1 { text-align: center; color: #ff2e63; margin-bottom: 20px; }
+  label { display: block; margin-top: 15px; font-weight: 600; color: #333; }
+  input[type="number"] { width: 100%; padding: 10px; margin-top: 5px; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; }
+  button { margin-top: 25px; width: 100%; padding: 15px; background: linear-gradient(90deg, #ff2e63, #ff6f91); color: white; border: none; border-radius: 15px; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+  button:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(255,46,99,0.3); }
+  #chartContainer { margin-top: 30px; }
+  #personalityBreakdown { margin-top: 20px; font-size: 16px; line-height: 1.4; color: #333; }
+</style>
 </head>
 <body>
+<div class="container">
+  <h1>KISMET</h1>
+  
+  <form id="surveyForm">
+    <label for="openness">Openness (1-5)</label>
+    <input type="number" id="openness" min="1" max="5" required>
 
-<h1>KISMET</h1>
-<div class="subtitle">Science-Based Compatibility Intelligence</div>
+    <label for="conscientiousness">Conscientiousness (1-5)</label>
+    <input type="number" id="conscientiousness" min="1" max="5" required>
 
-<div class="card">
-  <input id="name" placeholder="Your Name" />
+    <label for="extraversion">Extraversion (1-5)</label>
+    <input type="number" id="extraversion" min="1" max="5" required>
 
-  <div id="questions"></div>
+    <label for="agreeableness">Agreeableness (1-5)</label>
+    <input type="number" id="agreeableness" min="1" max="5" required>
 
-  <button onclick="submitProfile()">Reveal My Personality</button>
+    <label for="stability">Emotional Stability (1-5)</label>
+    <input type="number" id="stability" min="1" max="5" required>
+
+    <button type="submit">Submit Survey</button>
+  </form>
+
+  <div id="chartContainer">
+    <canvas id="radarChart"></canvas>
+  </div>
+
+  <div id="personalityBreakdown"></div>
 </div>
 
-<canvas id="radarChart"></canvas>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const questionsData = [
-
-  // OPENNESS
-  { trait: "openness", text: "I enjoy trying completely new experiences." },
-  { trait: "openness", text: "I enjoy deep philosophical conversations." },
-  { trait: "openness", text: "I am drawn to creative or artistic activities." },
-  { trait: "openness", text: "I prefer variety over routine." },
-  { trait: "openness", text: "I question traditional ways of doing things." },
-
-  // CONSCIENTIOUSNESS
-  { trait: "conscientiousness", text: "I make detailed plans before acting." },
-  { trait: "conscientiousness", text: "I finish tasks before relaxing." },
-  { trait: "conscientiousness", text: "I am highly dependable." },
-  { trait: "conscientiousness", text: "I keep my environment organized." },
-  { trait: "conscientiousness", text: "I follow through on commitments." },
-
-  // EXTRAVERSION
-  { trait: "extraversion", text: "I feel energized after social interaction." },
-  { trait: "extraversion", text: "I enjoy being the center of attention." },
-  { trait: "extraversion", text: "I speak up easily in group settings." },
-  { trait: "extraversion", text: "I enjoy meeting new people." },
-  { trait: "extraversion", text: "I prefer group activities over solo ones." },
-
-  // AGREEABLENESS
-  { trait: "agreeableness", text: "I prioritize harmony over winning arguments." },
-  { trait: "agreeableness", text: "I empathize easily with others." },
-  { trait: "agreeableness", text: "I avoid confrontation." },
-  { trait: "agreeableness", text: "I forgive easily." },
-  { trait: "agreeableness", text: "I go out of my way to help others." },
-
-  // STABILITY
-  { trait: "stability", text: "I stay calm in stressful situations." },
-  { trait: "stability", text: "I rarely feel overwhelmed." },
-  { trait: "stability", text: "I recover quickly from emotional setbacks." },
-  { trait: "stability", text: "I handle criticism well." },
-  { trait: "stability", text: "I maintain emotional balance under pressure." }
-];
-
-const container = document.getElementById("questions");
-
-questionsData.forEach((q, index) => {
-  const div = document.createElement("div");
-  div.className = "question";
-  div.innerHTML = `
-    <label>${q.text}</label>
-    <select id="q${index}">
-      <option value="1">1 - Strongly Disagree</option>
-      <option value="2">2 - Disagree</option>
-      <option value="3">3 - Neutral</option>
-      <option value="4">4 - Agree</option>
-      <option value="5">5 - Strongly Agree</option>
-    </select>
-  `;
-  container.appendChild(div);
-});
-
+const form = document.getElementById("surveyForm");
+const ctx = document.getElementById('radarChart').getContext('2d');
+const breakdown = document.getElementById("personalityBreakdown");
 let radarChart;
 
-function submitProfile() {
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
 
-  const traitTotals = {
-    openness: [],
-    conscientiousness: [],
-    extraversion: [],
-    agreeableness: [],
-    stability: []
+  const scores = {
+    openness: parseInt(document.getElementById('openness').value),
+    conscientiousness: parseInt(document.getElementById('conscientiousness').value),
+    extraversion: parseInt(document.getElementById('extraversion').value),
+    agreeableness: parseInt(document.getElementById('agreeableness').value),
+    stability: parseInt(document.getElementById('stability').value)
   };
 
-  questionsData.forEach((q, index) => {
-    const value = parseInt(document.getElementById(`q${index}`).value);
-    traitTotals[q.trait].push(value);
-  });
+  // Create radar chart
+  const data = {
+    labels: ['Openness','Conscientiousness','Extraversion','Agreeableness','Stability'],
+    datasets: [{
+      label: 'Your Personality',
+      data: Object.values(scores),
+      backgroundColor: 'rgba(255,46,99,0.2)',
+      borderColor: '#ff2e63',
+      borderWidth: 2
+    }]
+  };
+  if(radarChart) radarChart.destroy();
+  radarChart = new Chart(ctx, { type: 'radar', data: data, options: { scales: { r: { min: 1, max: 5 } } } });
 
-  const finalScores = {};
-  for (let trait in traitTotals) {
-    const avg = traitTotals[trait].reduce((a,b)=>a+b) / traitTotals[trait].length;
-    finalScores[trait] = avg * 20;
-  }
+  // Generate personality breakdown
+  const lines = [];
+  lines.push(scores.extraversion >=4 ? "You're outgoing and social, a true social butterfly!" : "You're more of a homebody, enjoying quiet time and close friends.");
+  lines.push(scores.openness >=4 ? "You love new experiences and trying new things." : "You prefer routine and familiar activities.");
+  lines.push(scores.conscientiousness >=4 ? "You're organized, reliable, and like planning ahead." : "You're flexible and go with the flow.");
+  lines.push(scores.agreeableness >=4 ? "You’re very empathetic and cooperative." : "You tend to be independent and assertive.");
+  lines.push(scores.stability >=4 ? "You remain calm under pressure and are emotionally steady." : "You feel emotions deeply and can be sensitive to stress.");
 
-  renderRadar(finalScores);
-}
-
-function renderRadar(scores) {
-
-  if (radarChart) radarChart.destroy();
-
-  const ctx = document.getElementById("radarChart");
-
-  radarChart = new Chart(ctx, {
-    type: "radar",
-    data: {
-      labels: ["Openness","Conscientiousness","Extraversion","Agreeableness","Stability"],
-      datasets: [{
-        label: "Your Personality Profile",
-        data: [
-          scores.openness,
-          scores.conscientiousness,
-          scores.extraversion,
-          scores.agreeableness,
-          scores.stability
-        ]
-      }]
-    },
-    options: {
-      scales: {
-        r: {
-          min: 0,
-          max: 100,
-          ticks: { display: false }
-        }
-      }
-    }
-  });
-}
+  breakdown.innerHTML = "<h3>Personality Breakdown:</h3><ul>" + lines.map(l => `<li>${l}</li>`).join('') + "</ul>";
+});
 </script>
-
 </body>
 </html>
-api/server.js
