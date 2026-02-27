@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>KISMET | Personality Match</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 900px;
+      margin: auto;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+      color: #222;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 42px;
+      letter-spacing: 3px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      margin-bottom: 40px;
+      color: #666;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      margin-bottom: 25px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+
+    .question {
+      margin-bottom: 18px;
+    }
+
+    select, input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+
+    button {
+      padding: 14px;
+      width: 100%;
+      border-radius: 8px;
+      border: none;
+      background: #111;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    canvas {
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>KISMET</h1>
+<div class="subtitle">Science-Based Compatibility Intelligence</div>
+
+<div class="card">
+  <input id="name" placeholder="Your Name" />
+
+  <div id="questions"></div>
+
+  <button onclick="submitProfile()">Reveal My Personality</button>
+</div>
+
+<canvas id="radarChart"></canvas>
+
+<script>
+const questionsData = [
+
+  // OPENNESS
+  { trait: "openness", text: "I enjoy trying completely new experiences." },
+  { trait: "openness", text: "I enjoy deep philosophical conversations." },
+  { trait: "openness", text: "I am drawn to creative or artistic activities." },
+  { trait: "openness", text: "I prefer variety over routine." },
+  { trait: "openness", text: "I question traditional ways of doing things." },
+
+  // CONSCIENTIOUSNESS
+  { trait: "conscientiousness", text: "I make detailed plans before acting." },
+  { trait: "conscientiousness", text: "I finish tasks before relaxing." },
+  { trait: "conscientiousness", text: "I am highly dependable." },
+  { trait: "conscientiousness", text: "I keep my environment organized." },
+  { trait: "conscientiousness", text: "I follow through on commitments." },
+
+  // EXTRAVERSION
+  { trait: "extraversion", text: "I feel energized after social interaction." },
+  { trait: "extraversion", text: "I enjoy being the center of attention." },
+  { trait: "extraversion", text: "I speak up easily in group settings." },
+  { trait: "extraversion", text: "I enjoy meeting new people." },
+  { trait: "extraversion", text: "I prefer group activities over solo ones." },
+
+  // AGREEABLENESS
+  { trait: "agreeableness", text: "I prioritize harmony over winning arguments." },
+  { trait: "agreeableness", text: "I empathize easily with others." },
+  { trait: "agreeableness", text: "I avoid confrontation." },
+  { trait: "agreeableness", text: "I forgive easily." },
+  { trait: "agreeableness", text: "I go out of my way to help others." },
+
+  // STABILITY
+  { trait: "stability", text: "I stay calm in stressful situations." },
+  { trait: "stability", text: "I rarely feel overwhelmed." },
+  { trait: "stability", text: "I recover quickly from emotional setbacks." },
+  { trait: "stability", text: "I handle criticism well." },
+  { trait: "stability", text: "I maintain emotional balance under pressure." }
+];
+
+const container = document.getElementById("questions");
+
+questionsData.forEach((q, index) => {
+  const div = document.createElement("div");
+  div.className = "question";
+  div.innerHTML = `
+    <label>${q.text}</label>
+    <select id="q${index}">
+      <option value="1">1 - Strongly Disagree</option>
+      <option value="2">2 - Disagree</option>
+      <option value="3">3 - Neutral</option>
+      <option value="4">4 - Agree</option>
+      <option value="5">5 - Strongly Agree</option>
+    </select>
+  `;
+  container.appendChild(div);
+});
+
+let radarChart;
+
+function submitProfile() {
+
+  const traitTotals = {
+    openness: [],
+    conscientiousness: [],
+    extraversion: [],
+    agreeableness: [],
+    stability: []
+  };
+
+  questionsData.forEach((q, index) => {
+    const value = parseInt(document.getElementById(`q${index}`).value);
+    traitTotals[q.trait].push(value);
+  });
+
+  const finalScores = {};
+  for (let trait in traitTotals) {
+    const avg = traitTotals[trait].reduce((a,b)=>a+b) / traitTotals[trait].length;
+    finalScores[trait] = avg * 20;
+  }
+
+  renderRadar(finalScores);
+}
+
+function renderRadar(scores) {
+
+  if (radarChart) radarChart.destroy();
+
+  const ctx = document.getElementById("radarChart");
+
+  radarChart = new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: ["Openness","Conscientiousness","Extraversion","Agreeableness","Stability"],
+      datasets: [{
+        label: "Your Personality Profile",
+        data: [
+          scores.openness,
+          scores.conscientiousness,
+          scores.extraversion,
+          scores.agreeableness,
+          scores.stability
+        ]
+      }]
+    },
+    options: {
+      scales: {
+        r: {
+          min: 0,
+          max: 100,
+          ticks: { display: false }
+        }
+      }
+    }
+  });
+}
+</script>
+
+</body>
+</html>
