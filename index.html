@@ -3,53 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KISMET - Love Personality Survey</title>
+<title>KISMET - Personality Survey</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  /* Body & background */
   body {
     font-family: 'Montserrat', sans-serif;
     margin:0; padding:0;
     background: linear-gradient(135deg, #ff4d6d, #ffccd5);
-    min-height:100vh;
-    overflow-x:hidden;
-    position:relative;
+    min-height:100vh; overflow-x:hidden; position:relative;
   }
 
-  /* Multiple floating hearts */
   .heart {
-    position:absolute;
-    font-size: 30px;
-    opacity: 0.1;
+    position:absolute; font-size: 30px; opacity: 0.1;
     animation: floatHeart 20s linear infinite;
   }
-
-  @keyframes floatHeart {
-    0% { transform: translateY(100vh) translateX(0) rotate(0deg);}
-    100% { transform: translateY(-20vh) translateX(50vw) rotate(360deg);}
-  }
+  @keyframes floatHeart { 0% { transform: translateY(100vh) translateX(0) rotate(0deg);} 100% { transform: translateY(-20vh) translateX(50vw) rotate(360deg);} }
 
   .container {
-    max-width: 700px;
-    margin: 50px auto;
-    padding: 30px;
-    background: rgba(255,255,255,0.95);
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    max-width: 650px; margin:50px auto; padding:30px;
+    background: rgba(255,255,255,0.95); border-radius:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.1);
   }
-
   h1 { text-align:center; color:#ff2e63; margin-bottom:20px;}
   label { display:block; margin-top:15px; font-weight:600; color:#333;}
   select { width:100%; padding:10px; border-radius:10px; margin-top:5px; font-size:16px;}
-  button {
-    margin-top:25px; width:100%; padding:15px;
+  button { margin-top:25px; width:100%; padding:15px;
     background: linear-gradient(90deg,#ff2e63,#ff6f91);
-    color:white; border:none; border-radius:15px; font-size:18px; font-weight:600; cursor:pointer; transition:0.3s;
-  }
+    color:white; border:none; border-radius:15px; font-size:18px; font-weight:600; cursor:pointer; transition:0.3s;}
   button:hover { transform:translateY(-3px); box-shadow:0 10px 20px rgba(255,46,99,0.3);}
-  #chartContainer { margin-top:30px;}
-  #personalityBreakdown { margin-top:20px; font-size:16px; line-height:1.4; color:#333;}
-  #averageScore { margin-top:15px; font-weight:600; color:#ff2e63; text-align:center; }
 </style>
 </head>
 <body>
@@ -69,21 +50,14 @@ for(let i=0;i<30;i++){
 
 <div class="container">
   <h1>KISMET Personality Survey</h1>
-  <form id="surveyForm">
-    <!-- 25 questions -->
+  <form id="surveyForm" target="_blank" action="results.html">
     <div id="questions"></div>
     <button type="submit">Submit Survey</button>
   </form>
-
-  <div id="averageScore"></div>
-  <div id="chartContainer">
-    <canvas id="radarChart"></canvas>
-  </div>
-  <div id="personalityBreakdown"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// 15 questions covering the 5 traits
 const questions = [
   {text:"I enjoy meeting new people", trait:"extraversion"},
   {text:"I prefer quiet nights at home", trait:"extraversion", reverse:true},
@@ -96,30 +70,18 @@ const questions = [
   {text:"I remain calm under pressure", trait:"stability"},
   {text:"I get stressed easily", trait:"stability", reverse:true},
   {text:"I enjoy creative hobbies", trait:"openness"},
-  {text:"I avoid taking risks", trait:"openness", reverse:true},
-  {text:"I like following schedules", trait:"conscientiousness"},
-  {text:"I am spontaneous", trait:"conscientiousness", reverse:true},
-  {text:"I enjoy social gatherings", trait:"extraversion"},
-  {text:"I feel drained in large groups", trait:"extraversion", reverse:true},
-  {text:"I trust people easily", trait:"agreeableness"},
-  {text:"I prefer to be independent", trait:"agreeableness", reverse:true},
-  {text:"I handle conflict well", trait:"stability"},
-  {text:"I worry about things a lot", trait:"stability", reverse:true},
-  {text:"I like abstract ideas", trait:"openness"},
-  {text:"I dislike change", trait:"openness", reverse:true},
+  {text:"I like social gatherings", trait:"extraversion"},
   {text:"I follow through on tasks", trait:"conscientiousness"},
-  {text:"I am often late or forgetful", trait:"conscientiousness", reverse:true},
-  {text:"I value harmony in relationships", trait:"agreeableness"}
+  {text:"I value harmony in relationships", trait:"agreeableness"},
+  {text:"I handle conflict well", trait:"stability"}
 ];
 
 const questionsDiv = document.getElementById("questions");
-
-// Generate dropdowns
 questions.forEach((q,i)=>{
   const label = document.createElement('label');
-  label.textContent = `${i+1}. ${q.text}`;
+  label.textContent=`${i+1}. ${q.text}`;
   const select = document.createElement('select');
-  select.id='q'+i;
+  select.name='q'+i; // submit value
   for(let j=1;j<=5;j++){
     const option = document.createElement('option');
     option.value=j;
@@ -130,62 +92,67 @@ questions.forEach((q,i)=>{
   questionsDiv.appendChild(select);
 });
 
-const form = document.getElementById("surveyForm");
-const ctx = document.getElementById('radarChart').getContext('2d');
-const breakdown = document.getElementById("personalityBreakdown");
-const averageDiv = document.getElementById("averageScore");
-let radarChart;
-
+// On submit, calculate results and pass via URL
+const form=document.getElementById("surveyForm");
 form.addEventListener("submit",(e)=>{
   e.preventDefault();
-
-  // Collect answers
-  const scores = {openness:0, conscientiousness:0, extraversion:0, agreeableness:0, stability:0};
-  const traitCounts = {openness:0, conscientiousness:0, extraversion:0, agreeableness:0, stability:0};
-  let total =0;
+  const formData = new FormData(form);
+  const scores={openness:0, conscientiousness:0, extraversion:0, agreeableness:0, stability:0};
+  const counts={openness:0, conscientiousness:0, extraversion:0, agreeableness:0, stability:0};
+  let total=0;
 
   questions.forEach((q,i)=>{
-    let val = parseInt(document.getElementById('q'+i).value);
-    if(q.reverse) val = 6 - val; // reverse scored
+    let val=parseInt(formData.get('q'+i));
+    if(q.reverse) val=6-val;
     scores[q.trait]+=val;
-    traitCounts[q.trait]++;
+    counts[q.trait]++;
     total+=val;
   });
 
-  // Average per trait
-  const traitAverages=[];
-  for(const t in scores){
-    scores[t] = (scores[t]/traitCounts[t]).toFixed(2);
-    traitAverages.push(scores[t]);
-  }
-
-  // Overall average
+  for(const t in scores) scores[t]=(scores[t]/counts[t]).toFixed(2);
   const overallAvg=(total/questions.length).toFixed(2);
-  averageDiv.textContent=`Your average score: ${overallAvg} / 5`;
 
-  // Radar chart
-  const data = {
-    labels: ['Openness','Conscientiousness','Extraversion','Agreeableness','Stability'],
-    datasets:[{
-      label:'Your Personality',
-      data: traitAverages,
-      backgroundColor:'rgba(255,46,99,0.2)',
-      borderColor:'#ff2e63',
-      borderWidth:2
-    }]
-  };
-  if(radarChart) radarChart.destroy();
-  radarChart = new Chart(ctx,{type:'radar',data:data,options:{scales:{r:{min:1,max:5}}}});
+  // Generate personality breakdown
+  const breakdown=[];
+  breakdown.push(scores.extraversion>=3.5?"Outgoing and social":"More of a homebody");
+  breakdown.push(scores.openness>=3.5?"Adventurous and curious":"Prefer routine and familiar");
+  breakdown.push(scores.conscientiousness>=3.5?"Organized and reliable":"Flexible and go-with-the-flow");
+  breakdown.push(scores.agreeableness>=3.5?"Empathetic and cooperative":"Independent and assertive");
+  breakdown.push(scores.stability>=3.5?"Calm under stress":"Sensitive to stress");
 
-  // Personality breakdown
-  const lines=[];
-  lines.push(scores.extraversion>=3.5?"You are outgoing and social!":"You are more of a homebody, enjoying quiet moments.");
-  lines.push(scores.openness>=3.5?"You love trying new things and exploring ideas.":"You prefer routine and familiar experiences.");
-  lines.push(scores.conscientiousness>=3.5?"You are organized and reliable.":"You are flexible and go with the flow.");
-  lines.push(scores.agreeableness>=3.5?"You are empathetic and cooperative.":"You are independent and assertive.");
-  lines.push(scores.stability>=3.5?"You remain calm under stress.":"You feel emotions deeply and may get anxious easily.");
-
-  breakdown.innerHTML="<h3>Personality Breakdown:</h3><ul>"+lines.map(l=>`<li>${l}</li>`).join('')+"</ul>";
+  // Open results in new tab
+  const newWin=window.open();
+  newWin.document.write(`<html><head><title>Your KISMET Results</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  body{font-family:Montserrat,sans-serif;padding:30px;background:#ffccd5;}
+  h1{text-align:center;color:#ff2e63;}
+  #chartContainer{max-width:500px;margin:auto;}
+  ul{font-size:16px;line-height:1.4;}
+  </style>
+  </head><body>
+  <h1>Your KISMET Results</h1>
+  <p><strong>Average Score:</strong> ${overallAvg} / 5</p>
+  <div id="chartContainer"><canvas id="radarChart"></canvas></div>
+  <h3>Personality Breakdown:</h3><ul>${breakdown.map(l=>`<li>${l}</li>`).join('')}</ul>
+  <script>
+  const ctx=document.getElementById("radarChart").getContext("2d");
+  new Chart(ctx,{
+    type:"radar",
+    data:{
+      labels:["Openness","Conscientiousness","Extraversion","Agreeableness","Stability"],
+      datasets:[{
+        label:"Your Personality",
+        data:[${scores.openness},${scores.conscientiousness},${scores.extraversion},${scores.agreeableness},${scores.stability}],
+        backgroundColor:"rgba(255,46,99,0.2)",
+        borderColor:"#ff2e63",
+        borderWidth:2
+      }]
+    },
+    options:{scales:{r:{min:1,max:5}}}
+  });
+  </script>
+  </body></html>`);
 });
 </script>
 </body>
